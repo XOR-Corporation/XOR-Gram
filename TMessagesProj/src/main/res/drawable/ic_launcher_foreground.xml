@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- XORGram Launcher Icon Foreground - Material You style paper airplane -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Paper airplane - simplified Material You style -->
+    <!-- Centered in the 108x108 viewport, safe zone is 72x72 in center -->
+    <group
+        android:translateX="54"
+        android:translateY="54"
+        android:rotation="-45">
+        
+        <!-- Main body - elongated shape pointing right -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-6,-3 L20,0 L-6,3 Z"/>
+        
+        <!-- Upper wing -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-6,-3 L-20,-16 L-6,-3"/>
+        
+        <!-- Lower wing -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-6,3 L-20,16 L-6,3"/>
+        
+        <!-- Tail -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M-6,-3 L-14,-10 L-6,-3"/>
+    </group>
+</vector>
