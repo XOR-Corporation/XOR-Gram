@@ -1,0 +1,64 @@
+name: Build XORGram Modules
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+        
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+        
+    - name: Build XORGram modules
+      run: |
+        echo "Building XORGram modular overlay system..."
+        ./gradlew :xor-core:compileDebugJavaWithJavac \
+                  :xor-bridge:compileDebugJavaWithJavac \
+                  :xor-ghost:compileDebugJavaWithJavac \
+                  :xor-vault:compileDebugJavaWithJavac \
+                  :xor-security:compileDebugJavaWithJavac \
+                  :xor-ui:compileDebugJavaWithJavac \
+                  :xor-media:compileDebugJavaWithJavac \
+                  :xor-sync:compileDebugJavaWithJavac \
+                  :xor-ai:compileDebugJavaWithJavac \
+                  :xor-admin:compileDebugJavaWithJavac \
+                  :xor-automation:compileDebugJavaWithJavac \
+                  :xor-plugins:compileDebugJavaWithJavac \
+                  --no-daemon --stacktrace
+                  
+    - name: Generate build summary
+      if: always()
+      run: |
+        echo "## XORGram Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Compiled Modules (12 total)" >> $GITHUB_STEP_SUMMARY
+        echo "| Module | Description |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------------|" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-core | Core infrastructure (XORModule, XORConfig, XOREvent, XOREventBus, XORModuleManager, XORSetting) |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-bridge | Single entry point for Telegram integration (XORBridge) |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-ghost | Ghost mode, read receipts, online status control |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-vault | Anti-recall, edit history, profile snapshots, black box logger |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-security | Biometric lock, panic button, fake PIN, client masking |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-ui | Custom themes, bubble customization, icon packs |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-media | Media quality control, compression settings |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-sync | Cross-device settings sync |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-ai | AI features: summarization, transcription, translation, smart replies |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-admin | Admin dashboard, auto-posting, bulk operations, analytics |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-automation | Automation rules, auto-reply, scheduled actions |" >> $GITHUB_STEP_SUMMARY
+        echo "| xor-plugins | Plugin system with Python/JavaScript runtime |" >> $GITHUB_STEP_SUMMARY

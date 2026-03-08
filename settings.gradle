@@ -1,6 +1,56 @@
+// XORGram Settings - Gradle Multi-Module Configuration
+// This file defines all modules in the XORGram project
+
+// ═══════════════════════════════════════════════════════════════
+// Telegram AOSP Modules (Original)
+// ═══════════════════════════════════════════════════════════════
 include ':TMessagesProj'
 include ':TMessagesProj_App'
 include ':TMessagesProj_AppHuawei'
 include ':TMessagesProj_AppHockeyApp'
 include ':TMessagesProj_AppStandalone'
 include ':TMessagesProj_AppTests'
+
+// ═══════════════════════════════════════════════════════════════
+// XORGram Core Modules
+// ═══════════════════════════════════════════════════════════════
+
+// Core Module - DI, Config, Events, Module Manager
+include ':xor-core'
+
+// Bridge Module - Entry point for all Telegram hooks
+include ':xor-bridge'
+
+// ═══════════════════════════════════════════════════════════════
+// XORGram Feature Modules
+// ═══════════════════════════════════════════════════════════════
+
+// Ghost Engine - Hide online, read receipts, typing
+include ':xor-ghost'
+
+// Data Vault - Anti-recall, edit history, profile snapshots
+include ':xor-vault'
+
+// Security Core - Biometric, panic, fake PIN, masking
+include ':xor-security'
+
+// UI/UX Engine - Themes, bubbles, icons
+include ':xor-ui'
+
+// Media Engine - Speed boost, player, equalizer
+include ':xor-media'
+
+// XORSync - P2P/Server sync with E2E encryption
+include ':xor-sync'
+
+// AI Assistant - Summarization, Whisper, translation
+include ':xor-ai'
+
+// Admin Toolkit - Dashboard, auto-posting, cross-posting
+include ':xor-admin'
+
+// Automation - Rules, auto-reply, cron, webhooks
+include ':xor-automation'
+
+// Plugins - Python/JS runtime, plugin store
+include ':xor-plugins'
