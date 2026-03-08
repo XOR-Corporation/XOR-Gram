@@ -155,7 +155,7 @@ android {
     buildFeatures {
         buildConfig = true
     }
-    namespace 'org.telegram.messenger.test'
+    namespace 'org.xor.gram.test'
 
     lintOptions {
         checkReleaseBuilds false
