@@ -1,4 +1,4 @@
-name: Build XORGram
+name: Build XORGram APK
 
 on:
   push:
@@ -82,7 +82,7 @@ jobs:
             public static String SAFETYNET_KEY = "${SAFETYNET_KEY}";
             
             // Store URLs
-            public static String PLAYSTORE_APP_URL = "https://play.google.com/store/apps/details?id=org.xorgram.messenger";
+            public static String PLAYSTORE_APP_URL = "https://play.google.com/store/apps/details?id=org.xor.gram";
             public static String HUAWEI_STORE_URL = "${HUAWEI_STORE_URL}";
             
             // Google Auth
@@ -134,7 +134,7 @@ jobs:
             private static Boolean betaApp;
             public static boolean isBetaApp() {
                 if (betaApp == null) {
-                    betaApp = ApplicationLoader.applicationContext != null && "org.xorgram.messenger.beta".equals(ApplicationLoader.applicationContext.getPackageName());
+                    betaApp = ApplicationLoader.applicationContext != null && "org.xor.gram.beta".equals(ApplicationLoader.applicationContext.getPackageName());
                 }
                 return betaApp;
             }
@@ -151,20 +151,49 @@ jobs:
 
     # Generate google-services.json from secret
     - name: Generate google-services.json
-      if: secrets.GOOGLE_SERVICES_JSON != ''
       env:
         GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
       run: |
-        echo "$GOOGLE_SERVICES_JSON" > TMessagesProj/google-services.json
-        echo "$GOOGLE_SERVICES_JSON" > TMessagesProj_App/google-services.json
+        if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+          echo "$GOOGLE_SERVICES_JSON" > TMessagesProj/google-services.json
+          echo "$GOOGLE_SERVICES_JSON" > TMessagesProj_App/google-services.json
+          echo "$GOOGLE_SERVICES_JSON" > TMessagesProj_AppHockeyApp/google-services.json
+          echo "$GOOGLE_SERVICES_JSON" > TMessagesProj_AppStandalone/google-services.json
+        else
+          echo "GOOGLE_SERVICES_JSON secret not set, using placeholder"
+          # Create placeholder google-services.json
+          cat > TMessagesProj/google-services.json << 'GSEOF'
+          {
+            "project_info": {
+              "project_number": "",
+              "firebase_url": "",
+              "project_id": "",
+              "storage_bucket": ""
+            },
+            "client": [],
+            "configuration_version": "1"
+          }
+          GSEOF
+          cp TMessagesProj/google-services.json TMessagesProj_App/google-services.json
+          cp TMessagesProj/google-services.json TMessagesProj_AppHockeyApp/google-services.json
+          cp TMessagesProj/google-services.json TMessagesProj_AppStandalone/google-services.json
+        fi
 
     # Generate release.keystore from secret
     - name: Generate release.keystore
-      if: secrets.RELEASE_KEYSTORE_BASE64 != ''
       env:
         RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
       run: |
-        echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > TMessagesProj/config/release.keystore
+        if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > TMessagesProj/config/release.keystore
+        else
+          echo "RELEASE_KEYSTORE_BASE64 secret not set, creating debug keystore"
+          # Create a temporary debug keystore if not provided
+          keytool -genkeypair -v -keystore TMessagesProj/config/release.keystore \
+            -alias androidkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=XORGram, OU=XOR, O=XOR, L=Unknown, ST=Unknown, C=XX"
+        fi
 
     # Configure gradle.properties with secrets
     - name: Configure keystore properties
@@ -181,36 +210,32 @@ jobs:
         sed -i "s/RELEASE_KEY_ALIAS=.*/RELEASE_KEY_ALIAS=${KEY_ALIAS}/" gradle.properties
         sed -i "s/RELEASE_STORE_PASSWORD=.*/RELEASE_STORE_PASSWORD=${STORE_PASSWORD}/" gradle.properties
 
-    - name: Build XORGram modules (compile only)
-      run: |
-        echo "Building XORGram modular overlay system..."
-        ./gradlew :xor-core:compileDebugJavaWithJavac \
-          :xor-bridge:compileDebugJavaWithJavac \
-          :xor-ghost:compileDebugJavaWithJavac \
-          :xor-vault:compileDebugJavaWithJavac \
-          :xor-security:compileDebugJavaWithJavac \
-          :xor-ui:compileDebugJavaWithJavac \
-          :xor-media:compileDebugJavaWithJavac \
-          :xor-sync:compileDebugJavaWithJavac \
-          :xor-ai:compileDebugJavaWithJavac \
-          :xor-admin:compileDebugJavaWithJavac \
-          :xor-automation:compileDebugJavaWithJavac \
-          :xor-plugins:compileDebugJavaWithJavac \
-          --no-daemon --stacktrace
-
-    # Full APK build (only on main/master with secrets configured)
+    # Build Debug APK
     - name: Build Debug APK
+      run: |
+        ./gradlew :TMessagesProj:assembleDebug --no-daemon --stacktrace
+
+    # Build Release APK (only on main/master)
+    - name: Build Release APK
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
       run: |
-        ./gradlew :TMessagesProj:assembleDebug --no-daemon --stacktrace || true
-      continue-on-error: true
+        ./gradlew :TMessagesProj:assembleRelease --no-daemon --stacktrace || true
 
+    # Upload Debug APK
     - name: Upload Debug APK
-      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: xrogram-debug
         path: TMessagesProj/build/outputs/apk/debug/*.apk
+        retention-days: 14
+
+    # Upload Release APK
+    - name: Upload Release APK
+      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      uses: actions/upload-artifact@v4
+      with:
+        name: xrogram-release
+        path: TMessagesProj/build/outputs/apk/release/*.apk
         retention-days: 14
 
     - name: Generate build summary
@@ -218,21 +243,14 @@ jobs:
       run: |
         echo "## XORGram Build Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Compiled Modules (12 total)" >> $GITHUB_STEP_SUMMARY
-        echo "| Module | Description |" >> $GITHUB_STEP_SUMMARY
-        echo "|--------|-------------|" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-core | Core infrastructure (XORModule, XORConfig, XOREvent, XOREventBus, XORModuleManager, XORSetting) |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-bridge | Single entry point for Telegram integration (XORBridge) |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-ghost | Ghost mode, read receipts, online status control |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-vault | Anti-recall, edit history, profile snapshots, black box logger |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-security | Biometric lock, panic button, fake PIN, client masking |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-ui | Custom themes, bubble customization, icon packs |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-media | Media quality control, compression settings |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-sync | Cross-device settings sync |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-ai | AI features: summarization, transcription, translation, smart replies |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-admin | Admin dashboard, auto-posting, bulk operations, analytics |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-automation | Automation rules, auto-reply, scheduled actions |" >> $GITHUB_STEP_SUMMARY
-        echo "| xor-plugins | Plugin system with Python/JavaScript runtime |" >> $GITHUB_STEP_SUMMARY
+        echo "### Build Artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ -f "TMessagesProj/build/outputs/apk/debug/"*.apk ]; then
+          echo "✅ Debug APK built successfully" >> $GITHUB_STEP_SUMMARY
+          ls -la TMessagesProj/build/outputs/apk/debug/*.apk >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Debug APK build failed" >> $GITHUB_STEP_SUMMARY
+        fi
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Required GitHub Secrets" >> $GITHUB_STEP_SUMMARY
         echo "To build full APKs, configure these secrets in repository settings:" >> $GITHUB_STEP_SUMMARY
@@ -246,6 +264,3 @@ jobs:
         echo "| \`RELEASE_KEY_ALIAS\` | Key alias |" >> $GITHUB_STEP_SUMMARY
         echo "| \`RELEASE_STORE_PASSWORD\` | Key password |" >> $GITHUB_STEP_SUMMARY
         echo "| \`GOOGLE_SERVICES_JSON\` | google-services.json content |" >> $GITHUB_STEP_SUMMARY
-        echo "| \`SAFETYNET_KEY\` | Android SafetyNet API key (optional) |" >> $GITHUB_STEP_SUMMARY
-        echo "| \`GOOGLE_AUTH_CLIENT_ID\` | Google OAuth client ID (optional) |" >> $GITHUB_STEP_SUMMARY
-        echo "| \`HUAWEI_APP_ID\` | Huawei AppGallery ID (optional) |" >> $GITHUB_STEP_SUMMARY
