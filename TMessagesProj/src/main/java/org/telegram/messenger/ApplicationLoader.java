@@ -48,6 +48,8 @@ import org.telegram.ui.LauncherIconController;
 import java.io.File;
 import java.util.Locale;
 
+import org.xorgram.bridge.XORBridge;
+
 public class ApplicationLoader extends Application {
 
     public static ApplicationLoader applicationLoaderInstance;
@@ -288,6 +290,13 @@ public class ApplicationLoader extends Application {
         }
 
         super.onCreate();
+
+        // XORGram initialization
+        try {
+            XORBridge.init(this);
+        } catch (Throwable t) {
+            FileLog.e("XORGram initialization failed", t);
+        }
 
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("app start time = " + (startTime = SystemClock.elapsedRealtime()));

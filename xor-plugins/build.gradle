@@ -21,6 +21,14 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+        debug {
+            minifyEnabled false
+        }
+        // Add standalone build type to match Telegram's build variants
+        standalone {
+            initWith release
+            minifyEnabled false
+        }
     }
 
     compileOptions {

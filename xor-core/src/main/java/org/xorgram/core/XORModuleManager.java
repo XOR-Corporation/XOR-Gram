@@ -83,18 +83,20 @@ public class XORModuleManager {
     
     private XORModuleManager(Context context) {
         this.context = context;
-        this.config = XORConfig.getInstance(context);
-        this.eventBus = XOREventBus.getInstance();
         this.modules = new ConcurrentHashMap<>();
         this.eventSubscriptions = new EnumMap<>(XOREvent.class);
         this.moduleStates = new ConcurrentHashMap<>();
         this.lifecycleListeners = new ArrayList<>();
+
+        // Initialize config and event bus - errors are caught at getInstance level
+        this.config = XORConfig.getInstance(context);
+        this.eventBus = XOREventBus.getInstance();
     }
-    
+
     // ═══════════════════════════════════════════════════════════════
     // Initialization
     // ═══════════════════════════════════════════════════════════════
-    
+
     /**
      * Initialize the module manager and load all modules.
      */
@@ -103,20 +105,26 @@ public class XORModuleManager {
             Log.w(TAG, "XORModuleManager already initialized");
             return;
         }
-        
+
         Log.i(TAG, "Initializing XORModuleManager...");
-        
-        // Load built-in modules
-        loadBuiltinModules();
-        
-        // Resolve dependencies
-        resolveDependencies();
-        
-        // Initialize modules in dependency order
-        initializeModules();
-        
-        initialized = true;
-        Log.i(TAG, "XORModuleManager initialized with " + modules.size() + " modules");
+
+        try {
+            // Load built-in modules
+            loadBuiltinModules();
+
+            // Resolve dependencies
+            resolveDependencies();
+
+            // Initialize modules in dependency order
+            initializeModules();
+
+            initialized = true;
+            Log.i(TAG, "XORModuleManager initialized with " + modules.size() + " modules");
+        } catch (Throwable t) {
+            Log.e(TAG, "Error during module initialization", t);
+            // Mark as initialized anyway to prevent loops
+            initialized = true;
+        }
     }
     
     /**

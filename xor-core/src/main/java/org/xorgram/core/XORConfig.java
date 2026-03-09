@@ -98,21 +98,37 @@ public class XORConfig {
     }
     
     private SharedPreferences createEncryptedPreferences() {
+        // Try encrypted preferences first, with multiple fallback levels
         try {
             MasterKey masterKey = new MasterKey.Builder(context)
                 .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
                 .build();
 
-            return EncryptedSharedPreferences.create(
+            SharedPreferences encryptedPrefs = EncryptedSharedPreferences.create(
                 context,
                 PREFS_FILE_NAME,
                 masterKey,
                 EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
-        } catch (Exception e) {
-            Log.w(TAG, "Failed to create encrypted preferences, falling back to regular", e);
-            return context.getSharedPreferences(PREFS_FILE_NAME, Context.MODE_PRIVATE);
+            
+            // Test that we can actually write to it
+            encryptedPrefs.edit().putBoolean("_test", true).apply();
+            encryptedPrefs.edit().remove("_test").apply();
+            
+            Log.i(TAG, "Using encrypted preferences");
+            return encryptedPrefs;
+        } catch (Throwable e) {
+            // Fallback to regular preferences - this is safe as the data is not highly sensitive
+            // The main purpose is convenience, not security against physical access
+            Log.w(TAG, "Failed to create encrypted preferences, falling back to regular: " + e.getMessage());
+            try {
+                return context.getSharedPreferences(PREFS_FILE_NAME, Context.MODE_PRIVATE);
+            } catch (Throwable e2) {
+                // Last resort - in-memory preferences (will not persist)
+                Log.e(TAG, "Failed to create any preferences, using in-memory fallback", e2);
+                return new InMemoryPreferences();
+            }
         }
     }
     
@@ -716,5 +732,163 @@ public class XORConfig {
     
     public interface OnConfigChangeListener {
         void onConfigChanged(String key, Object value);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // In-Memory Preferences Fallback
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * In-memory SharedPreferences implementation for fallback when
+     * neither encrypted nor regular preferences can be created.
+     * Data will not persist across app restarts.
+     */
+    private static class InMemoryPreferences implements SharedPreferences {
+        private final Map<String, Object> data = new HashMap<>();
+        private final List<OnSharedPreferenceChangeListener> listeners = new ArrayList<>();
+
+        @Override
+        public Map<String, ?> getAll() {
+            return new HashMap<>(data);
+        }
+
+        @Override
+        public String getString(String key, String defValue) {
+            Object v = data.get(key);
+            return v instanceof String ? (String) v : defValue;
+        }
+
+        @Override
+        public Set<String> getStringSet(String key, Set<String> defValues) {
+            Object v = data.get(key);
+            if (v instanceof Set) {
+                @SuppressWarnings("unchecked")
+                Set<String> set = (Set<String>) v;
+                return set;
+            }
+            return defValues;
+        }
+
+        @Override
+        public int getInt(String key, int defValue) {
+            Object v = data.get(key);
+            return v instanceof Integer ? (Integer) v : defValue;
+        }
+
+        @Override
+        public long getLong(String key, long defValue) {
+            Object v = data.get(key);
+            return v instanceof Long ? (Long) v : defValue;
+        }
+
+        @Override
+        public float getFloat(String key, float defValue) {
+            Object v = data.get(key);
+            return v instanceof Float ? (Float) v : defValue;
+        }
+
+        @Override
+        public boolean getBoolean(String key, boolean defValue) {
+            Object v = data.get(key);
+            return v instanceof Boolean ? (Boolean) v : defValue;
+        }
+
+        @Override
+        public boolean contains(String key) {
+            return data.containsKey(key);
+        }
+
+        @Override
+        public Editor edit() {
+            return new InMemoryEditor();
+        }
+
+        @Override
+        public void registerOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener listener) {
+            listeners.add(listener);
+        }
+
+        @Override
+        public void unregisterOnSharedPreferenceChangeListener(OnSharedPreferenceChangeListener listener) {
+            listeners.remove(listener);
+        }
+
+        private class InMemoryEditor implements Editor {
+            private final Map<String, Object> pending = new HashMap<>();
+            private final List<String> pendingRemovals = new ArrayList<>();
+            private boolean clearPending = false;
+
+            @Override
+            public Editor putString(String key, String value) {
+                pending.put(key, value);
+                return this;
+            }
+
+            @Override
+            public Editor putStringSet(String key, Set<String> values) {
+                pending.put(key, values);
+                return this;
+            }
+
+            @Override
+            public Editor putInt(String key, int value) {
+                pending.put(key, value);
+                return this;
+            }
+
+            @Override
+            public Editor putLong(String key, long value) {
+                pending.put(key, value);
+                return this;
+            }
+
+            @Override
+            public Editor putFloat(String key, float value) {
+                pending.put(key, value);
+                return this;
+            }
+
+            @Override
+            public Editor putBoolean(String key, boolean value) {
+                pending.put(key, value);
+                return this;
+            }
+
+            @Override
+            public Editor remove(String key) {
+                pendingRemovals.add(key);
+                return this;
+            }
+
+            @Override
+            public Editor clear() {
+                clearPending = true;
+                return this;
+            }
+
+            @Override
+            public boolean commit() {
+                apply();
+                return true;
+            }
+
+            @Override
+            public void apply() {
+                if (clearPending) {
+                    data.clear();
+                }
+                for (String key : pendingRemovals) {
+                    data.remove(key);
+                }
+                data.putAll(pending);
+                
+                // Notify listeners
+                for (String key : pending.keySet()) {
+                    for (OnSharedPreferenceChangeListener listener : listeners) {
+                        listener.onSharedPreferenceChanged(InMemoryPreferences.this, key);
+                    }
+                }
+            }
+        }
     }
 }

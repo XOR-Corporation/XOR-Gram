@@ -58,23 +58,38 @@ public final class XORBridge {
             Log.w(TAG, "XORBridge already initialized");
             return;
         }
-        
+
         Log.i(TAG, "═══════════════════════════════════════════════════");
-        Log.i(TAG, "  XORGram Bridge Initializing...");
+        Log.i(TAG, " XORGram Bridge Initializing...");
         Log.i(TAG, "═══════════════════════════════════════════════════");
-        
+
         try {
+            // Step 1: Initialize config first (most likely to fail)
+            Log.d(TAG, "Step 1: Initializing XORConfig...");
+            try {
+                config = XORConfig.getInstance(app);
+                Log.d(TAG, "XORConfig initialized successfully");
+            } catch (Throwable t) {
+                Log.e(TAG, "XORConfig initialization failed, will use defaults", t);
+                // Continue without config - modules will use defaults
+            }
+
+            // Step 2: Initialize module manager
+            Log.d(TAG, "Step 2: Initializing XORModuleManager...");
             moduleManager = XORModuleManager.getInstance(app);
-            config = XORConfig.getInstance(app);
-            
-            // Load and initialize all modules
+            Log.d(TAG, "XORModuleManager instance created");
+
+            // Step 3: Load and initialize all modules
+            Log.d(TAG, "Step 3: Initializing modules...");
             moduleManager.init();
-            
+
             initialized = true;
             Log.i(TAG, "XORBridge initialized successfully");
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize XORBridge", e);
+
+        } catch (Throwable e) {
+            // Catch all errors to prevent app crash
+            Log.e(TAG, "Failed to initialize XORBridge - continuing without XORGram", e);
+            initialized = false;
         }
     }
     

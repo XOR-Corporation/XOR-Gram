@@ -27,6 +27,11 @@ android {
         debug {
             minifyEnabled false
         }
+        // Add standalone build type to match Telegram's build variants
+        standalone {
+            initWith release
+            minifyEnabled false
+        }
     }
 
     compileOptions {
