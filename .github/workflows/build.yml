@@ -156,10 +156,13 @@ jobs:
           # Try base64 decode first, if fails use as-is
           echo "$GOOGLE_SERVICES_JSON" | base64 -d > /tmp/gs.json 2>/dev/null || echo "$GOOGLE_SERVICES_JSON" > /tmp/gs.json
           cp /tmp/gs.json TMessagesProj/google-services.json
+          cp /tmp/gs.json TMessagesProj_App/google-services.json
         else
           echo "GOOGLE_SERVICES_JSON secret not set, creating placeholder"
-          # Create placeholder google-services.json for TMessagesProj only
-          echo '{"project_info":{"project_number":"123456789012","project_id":"xorgram-dev","storage_bucket":"xorgram-dev.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:123456789012:android:abcdef1234567890","android_client_info":{"package_name":"org.telegram.messenger"}},"oauth_client":[{"client_id":"123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com","client_type":3}],"api_key":[{"current_key":"AIzaSyDummyKeyForDevOnly"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}},{"client_info":{"mobilesdk_app_id":"1:123456789012:android:abcdef1234567891","android_client_info":{"package_name":"org.xor.gram"}},"oauth_client":[{"client_id":"123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com","client_type":3}],"api_key":[{"current_key":"AIzaSyDummyKeyForDevOnly"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > TMessagesProj/google-services.json
+          # Create placeholder google-services.json for both TMessagesProj and TMessagesProj_App
+          PLACEHOLDER_JSON='{"project_info":{"project_number":"123456789012","project_id":"xorgram-dev","storage_bucket":"xorgram-dev.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:123456789012:android:abcdef1234567890","android_client_info":{"package_name":"org.telegram.messenger"}},"oauth_client":[{"client_id":"123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com","client_type":3}],"api_key":[{"current_key":"AIzaSyDummyKeyForDevOnly"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}},{"client_info":{"mobilesdk_app_id":"1:123456789012:android:abcdef1234567891","android_client_info":{"package_name":"org.xor.gram"}},"oauth_client":[{"client_id":"123456789012-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com","client_type":3}],"api_key":[{"current_key":"AIzaSyDummyKeyForDevOnly"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}'
+          echo "$PLACEHOLDER_JSON" > TMessagesProj/google-services.json
+          echo "$PLACEHOLDER_JSON" > TMessagesProj_App/google-services.json
         fi
 
     # Generate release.keystore from secret (base64 encoded)
