@@ -9,8 +9,8 @@ on:
   workflow_dispatch:
 
 env:
-  # Enable all performance optimizations
-  GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.configuration-cache=true -Dorg.gradle.configuration-cache.problems=warn -Dorg.gradle.workers.max=4 -Xmx4g"
+  # Enable all performance optimizations (without configuration-cache - incompatible with TMessagesProj)
+  GRADLE_OPTS: "-Dorg.gradle.daemon=true -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.workers.max=4 -Xmx4g"
   # Pre-download dependencies to speed up builds
   GRADLE_BUILD_ACTION_CACHE_DEBUG_ENABLED: true
 
@@ -182,17 +182,23 @@ jobs:
         sed -i "s/RELEASE_KEY_ALIAS=.*/RELEASE_KEY_ALIAS=${KEY_ALIAS}/" gradle.properties
         sed -i "s/RELEASE_STORE_PASSWORD=.*/RELEASE_STORE_PASSWORD=${STORE_PASSWORD}/" gradle.properties
 
-    # Single build step - debug only for PRs/pushes, release for tags
+    # Apply XORGram patches (namespace change, R/BuildConfig imports)
+    - name: Apply XORGram patches
+      run: |
+        chmod +x scripts/apply_patches.sh
+        ./scripts/apply_patches.sh
+
+        # Single build step - debug only for PRs/pushes, release for tags
     - name: Build APK
       run: |
         chmod +x gradlew
-        
+
         # Build debug APK (always)
-        ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --parallel --build-cache --configuration-cache
-        
+        ./gradlew :TMessagesProj_App:assembleAfatDebug --no-daemon --parallel --build-cache
+
         # Build release APK only for tags or main/master
         if [[ "${GITHUB_REF}" == refs/tags/* ]] || [[ "${GITHUB_REF}" == "refs/heads/main" ]] || [[ "${GITHUB_REF}" == "refs/heads/master" ]]; then
-            ./gradlew :TMessagesProj_App:assembleAfatRelease --no-daemon --parallel --build-cache --configuration-cache || true
+            ./gradlew :TMessagesProj_App:assembleAfatRelease --no-daemon --parallel --build-cache || true
         fi
 
     # Upload Debug APK
